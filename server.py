@@ -2,10 +2,9 @@
 
 import socket
 import threading
-from string import Template
 
 host='127.0.0.1'
-port=52525
+port=52521
 
 server=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server.bind((host,port))
@@ -14,9 +13,25 @@ server.listen()
 clients=[]
 names=[]
 
-def broadcast(message):
-    for client in clients:
-        client.send(message)
+
+def receive():
+    while True:
+        client,address=server.accept()
+        print(f'Connected with {str(address)}'.encode('ascii'))
+        client.send('NAME'.encode('ascii'))
+        name=client.recv(1024).decode('ascii')
+        names.append(name)
+        print(f'{name} has joined the chat'.encode('ascii'))
+
+        broadcast(f'{name} has joined the chat room'.encode('ascii'))
+        clients.append(client)
+
+        client.send('You have joined the chat room'.encode('ascii'))
+
+        thread=threading.Thread(target=(handle), args=(client,))
+        thread.start()
+
+
 
 def handle(client):
     while True:
@@ -32,22 +47,12 @@ def handle(client):
             names.remove(name)
             break
 
-def receive():
-    while True:
-        client,address=server.accept()
-        print(f'Connected with {str(address)}'.encode('ascii'))
-        client.send('NAME'.encode('ascii'))
-        name=client.recv(1024).decode('ascii')
-        names.append(name)
-        broadcast(f'{name} has joined the chat room'.encode('ascii'))
 
-        clients.append(client)
+def broadcast(message):
+    for client in clients:
+        client.send(message)
 
-        print(f'{name} has joined the chat'.encode('ascii'))
-        client.send('You have joined the chat room'.encode('ascii'))
 
-        thread=threading.Thread(target=(handle), args=(client,))
-        thread.start()
 
 print('Server Started')
 receive()
